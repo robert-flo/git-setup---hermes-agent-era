@@ -47,6 +47,10 @@ docker-run: ## Run git-setup interactively in an ephemeral container
 
 docker-clean: ## Remove the local Docker image
 	@command -v docker > /dev/null || { printf "$(RED)Docker is not installed$(NC)\n"; exit 1; }
+	@case " $(DOCKER_TEST_IMAGES) " in \
+		*" $(DOCKER_IMAGE) "*) ;; \
+		*) printf "$(RED)Refusing to remove unmanaged Docker image: $(DOCKER_IMAGE)$(NC)\n"; exit 1;; \
+	esac
 	@if docker image inspect "$(DOCKER_IMAGE)" > /dev/null 2>&1; then \
 		docker image rm "$(DOCKER_IMAGE)"; \
 	else \

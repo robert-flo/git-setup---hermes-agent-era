@@ -74,4 +74,15 @@ grep -Fq 'Unsupported DOCKER_ENV: debian' "$TEST_ROOT/invalid-environment-output
   fail 'unsupported Docker environment did not explain the valid choices'
 [[ ! -s $DOCKER_LOG ]] || fail 'unsupported Docker environment invoked Docker'
 
+unmanaged_cleanup_status=0
+: > "$DOCKER_LOG"
+PATH="$TEST_BIN:$PATH" DOCKER_LOG="$DOCKER_LOG" \
+  make --no-print-directory docker-clean DOCKER_IMAGE=unrelated:local > "$TEST_ROOT/unmanaged-cleanup-output" 2>&1 || \
+  unmanaged_cleanup_status=$?
+
+((unmanaged_cleanup_status != 0)) || fail 'cleanup accepted an unmanaged Docker image'
+grep -Fq 'Refusing to remove unmanaged Docker image: unrelated:local' "$TEST_ROOT/unmanaged-cleanup-output" || \
+  fail 'cleanup did not explain why the image was rejected'
+[[ ! -s $DOCKER_LOG ]] || fail 'cleanup invoked Docker for an unmanaged image'
+
 printf 'PASS: Make selects and cleans Docker environments\n'
