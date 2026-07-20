@@ -97,6 +97,7 @@ custom_config="$CUSTOM_HOME/.config/git/config"
 # Verification reports its own section for all generated files without relying
 # on the workstation's credentials or keyring.
 run_setup "$CUSTOM_HOME" verify > "$TEST_ROOT/verify-output" || true
+require_output "$TEST_ROOT/verify-output" 'Git + GitHub + GPG Configuration for Arch Linux'
 require_output "$TEST_ROOT/verify-output" 'Generated Git Configuration Files'
 for file in "${generated_files[@]}"; do
   require_output "$TEST_ROOT/verify-output" "Found: ~/.config/git/$file"
