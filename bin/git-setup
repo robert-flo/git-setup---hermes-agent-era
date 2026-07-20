@@ -121,6 +121,28 @@ cleanup() {
   fi
 }
 
+prompt_setup_identity() {
+  local entered_name=""
+  local entered_email=""
+
+  print_info "Git identity for this installation:"
+
+  if [[ -z ${NAME+x} ]]; then
+    echo -ne "  ${GRAY}Name [$USER_NAME]:${NC} "
+    read -r entered_name
+    [[ -n $entered_name ]] && USER_NAME=$entered_name
+  fi
+
+  if [[ -z ${EMAIL+x} ]]; then
+    echo -ne "  ${GRAY}Email [$USER_EMAIL]:${NC} "
+    read -r entered_email
+    [[ -n $entered_email ]] && USER_EMAIL=$entered_email
+  fi
+
+  print_success "Name: ${WHITE}$USER_NAME${NC}"
+  print_success "Email: ${WHITE}$USER_EMAIL${NC}"
+}
+
 # ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ Detection Functions                                                          │
 # └──────────────────────────────────────────────────────────────────────────────┘
@@ -616,6 +638,7 @@ generate_git_config_files() {
 
 setup_github_auth() {
   print_section "${ICON_GITHUB} GitHub Authentication"
+  prompt_setup_identity
 
   if gh auth status > /dev/null 2>&1; then
     local user=""
@@ -977,9 +1000,9 @@ do_verify() {
 }
 
 do_setup() {
-  generate_git_config_files
   verify_dependencies
   setup_github_auth
+  generate_git_config_files
   setup_ssh_key
   setup_gpg_key
   configure_signing
@@ -1105,8 +1128,7 @@ do_clean() {
 # │ Entry Point                                                                  │
 # └──────────────────────────────────────────────────────────────────────────────┘
 
-main() {
-  clear || true
+show_ravn_banner() {
   local gh_user=""
   gh_user=$(gh api user -q .login 2> /dev/null || echo "ravn-ruby-path")
   echo -e "${CYAN}"
@@ -1129,6 +1151,11 @@ BANNER_EOF
   ╰────────────────────────────────────────────────────╯
 BANNER_EOF
   echo -e "${NC}"
+}
+
+main() {
+  clear || true
+  show_ravn_banner
 
   # Handle command line arguments
   case "${1:-}" in
@@ -1187,6 +1214,7 @@ BANNER_EOF
     echo -ne "  ${GRAY}Press Enter to continue...${NC}"
     read -r
     clear || true
+    show_ravn_banner
   done
 }
 
