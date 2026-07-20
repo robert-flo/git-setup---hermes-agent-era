@@ -1,9 +1,219 @@
 #!/usr/bin/env bash
+# ╭──────────────────────────────────────────────────────────────────────────────╮
+# │                                                                              │
+# │   ██████╗ ██╗████████╗    ███████╗███████╗████████╗██╗   ██╗██████╗          │
+# │  ██╔════╝ ██║╚══██╔══╝    ██╔════╝██╔════╝╚══██╔══╝██║   ██║██╔══██╗         │
+# │  ██║  ███╗██║   ██║       ███████╗█████╗     ██║   ██║   ██║██████╔╝         │
+# │  ██║   ██║██║   ██║       ╚════██║██╔══╝     ██║   ██║   ██║██╔═══╝          │
+# │  ╚██████╔╝██║   ██║       ███████║███████╗   ██║   ╚██████╔╝██║              │
+# │   ╚═════╝ ╚═╝   ╚═╝       ╚══════╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝              │
+# │                                                                              │
+# │            Git + GitHub + GPG Configuration for Arch Linux                   │
+# │                                                                              │
+# ╰──────────────────────────────────────────────────────────────────────────────╯
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                          git-setup — Documentación                         ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+# # DESCRIPCIÓN
+# Asistente interactivo para configurar Git, GitHub, claves SSH y GPG signing
+# en Arch Linux. Ofrece subcomandos para verificar, instalar, probar y limpiar
+# la configuración completa del entorno de desarrollo.
+#
+# # USO BÁSICO
+#   git-setup              # Menú interactivo
+#   git-setup <comando>    # Modo directo
+#
+# # SUBCOMANDOS
+#
+#   verify | -v   — Verifica la configuración actual sin modificar nada
+#   config | -f   — Genera los archivos de configuración en ~/.config/git
+#   setup  | -s   — Configura desde cero: archivos, gh auth, SSH, GPG, signing
+#   test   | -t   — Crea un repo temporal, prueba signed commits, push
+#   clean  | -c   — Elimina toda la configuración local (SSH, GPG, gh auth)
+#   help   | -h   — Muestra ayuda rápida
+#
+# # EJEMPLOS
+#
+#   ## Verificar configuración actual
+#   git-setup verify
+#   # → Muestra estado de: dependencias, git config, SSH keys, GPG keys, gh auth
+#
+#   ## Configuración completa desde cero
+#   git-setup setup
+#   # → Pide token de GitHub
+#   # → Genera SSH ed25519 key y la sube a GitHub (auth + signing)
+#   # → Genera GPG RSA 4096 key y la sube a GitHub
+#   # → Pregunta método de signing (SSH / GPG / None)
+#   # → Configura default branch = master
+#
+#   ## Prueba de integración
+#   git-setup test
+#   # → Crea /tmp/test-git-<timestamp>/
+#   # → Hace signed commit
+#   # → Opcional: push a GitHub (crea repo temporal y lo borra)
+#   # → Verifica la firma del commit
+#
+#   ## Limpiar todo
+#   git-setup clean
+#   # → Elimina ~/.ssh/id_ed25519*
+#   # → Elimina todas las GPG keys del usuario
+#   # → Elimina gh auth token
+#   # → Pide confirmación "yes"
+#
+#   ## Menú interactivo
+#   git-setup
+#   # → Muestra menú con opciones 1-4 y q
+#
+# # COMBINACIONES
+#
+#   | Modo                          | Comando                       | Resultado                                      |
+#   |-------------------------------|-------------------------------|------------------------------------------------|
+#   | Verificar solo                | git-setup -v                  | Estado de todo sin cambios                     |
+#   | Setup completo                | git-setup -s                  | GitHub SSH GPG config desde cero               |
+#   | Test rápido (local)           | git-setup -t                  | Crea repo, prueba signing, no push             |
+#   | Test con push                 | git-setup test                | Test + pregunta si hacer push                  |
+#   | Clean (con confirmación)      | git-setup -c                  | Pide "yes" antes de borrar                     |
+#   | Menú interactivo              | git-setup                     | Navegación por números                         |
+#   | Ayuda rápida                  | git-setup help                | Lista de comandos                              |
+#
+# # FLUJO RECOMENDADO
+#   1. git-setup verify     # Ver qué falta
+#   2. git-setup setup      # Configurar todo
+#   3. git-setup test       # Probar que funciona
 
 set -Eeuo pipefail
 
-mydir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck disable=SC1091 # Resolved from the checked-out project root.
-source "${mydir}/helper/set_variable.sh"
+#--------------------------------#
+# import variables and functions #
+#--------------------------------#
+# Establece el directorio de trabajo del script e importa variables y funciones globales
+# desde global_fn.sh. Si no se puede cargar el archivo, el script termina con error.
+scrDir="$(dirname "$(realpath "$0")")"
+PROJECT_DIR="$scrDir"
+# shellcheck disable=SC1091 # Resolved from the project root.
+source "$PROJECT_DIR/helper/set_variable.sh"
+# shellcheck disable=SC1091
+if ! source "$PROJECT_DIR/lib/global_fn.sh"; then
+  echo "Error: unable to source global_fn.sh..."
+  exit 1
+fi
 
-exec "$GIT_SETUP_LEGACY_ENTRYPOINT" "$@"
+trap cleanup SIGINT SIGTERM ERR EXIT
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Configuration                                                                │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Helper Functions                                                             │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+cleanup() {
+  trap - SIGINT SIGTERM ERR EXIT
+  if [[ -f /tmp/gpg_batch ]]; then
+    rm -f /tmp/gpg_batch
+  fi
+}
+
+# shellcheck disable=SC1091
+source "$PROJECT_DIR/scripts/setup"
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Test Functions                                                               │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+# shellcheck disable=SC1091
+source "$PROJECT_DIR/scripts/test"
+# shellcheck disable=SC1091
+source "$PROJECT_DIR/scripts/clean"
+show_ravn_banner() {
+  local gh_user=""
+  gh_user=$(gh api user -q .login 2> /dev/null || echo "ravn-ruby-path")
+  echo -e "${CYAN}"
+  cat << 'BANNER_EOF'
+  ╭────────────────────────────────────────────────────╮
+  │                                                    │
+  │  ██████╗  █████╗ ██╗   ██╗███╗   ██╗               │
+  │  ██╔══██╗██╔══██╗██║   ██║████╗  ██║               │
+  │  ██████╔╝███████║██║   ██║██╔██╗ ██║               │
+  │  ██╔══██╗██╔══██║╚██╗ ██╔╝██║╚██╗██║               │
+  │  ██║  ██║██║  ██║ ╚████╔╝ ██║ ╚████║               │
+  │  ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═══╝               │
+  │                                                    │
+  │   Git + GitHub + GPG Configuration for Arch Linux  │
+  │                                                    │
+BANNER_EOF
+  echo -e "  │     ${GRAY}by Roberto Flores ${WHITE}@${gh_user}${CYAN}                  │"
+  cat << 'BANNER_EOF'
+  │                                                    │
+  ╰────────────────────────────────────────────────────╯
+BANNER_EOF
+  echo -e "${NC}"
+}
+
+main() {
+  clear || true
+  show_ravn_banner
+
+  # Handle command line arguments
+  case "${1:-}" in
+    verify | v | --verify | -v)
+      do_verify
+      exit 0
+      ;;
+    config | f | --config | -f)
+      generate_git_config_files
+      exit 0
+      ;;
+    setup | s | --setup | -s)
+      do_setup
+      exit 0
+      ;;
+    test | t | --test | -t)
+      run_test
+      exit 0
+      ;;
+    clean | c | --clean | -c)
+      do_clean
+      exit 0
+      ;;
+    help | h | --help | -h)
+      echo "Usage: $0 [command]"
+      echo ""
+      echo "Commands:"
+      echo "  verify   Check current configuration"
+      echo "  config   Generate files in ~/.config/git"
+      echo "  setup    Generate config and run full setup wizard"
+      echo "  test     Run integration test"
+      echo "  clean    Clean local config (fresh start)"
+      echo ""
+      echo "Run without arguments for interactive menu."
+      exit 0
+      ;;
+  esac
+
+  # Interactive mode
+  while true; do
+    show_menu
+    read -r choice
+    case $choice in
+      1) do_verify ;;
+      2) do_setup ;;
+      3) run_test ;;
+      4) do_clean ;;
+      q | Q)
+        echo ""
+        print_info "Goodbye!"
+        exit 0
+        ;;
+      *) print_error "Invalid option" ;;
+    esac
+    echo ""
+    echo -ne "  ${GRAY}Press Enter to continue...${NC}"
+    read -r
+    clear || true
+    show_ravn_banner
+  done
+}
+
+main "$@"
+
