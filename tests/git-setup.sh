@@ -91,6 +91,7 @@ require_output "$TEST_ROOT/missing-dependency-output" 'Arch Linux:'
 require_output "$TEST_ROOT/missing-dependency-output" 'sudo pacman -S --needed git github-cli gnupg openssh git-delta'
 require_output "$TEST_ROOT/missing-dependency-output" 'Fedora:'
 require_output "$TEST_ROOT/missing-dependency-output" 'sudo dnf install git gh gnupg2 openssh-clients git-delta'
+require_output "$TEST_ROOT/missing-dependency-output" 'After installing the missing packages, run git-setup again.'
 [[ ! -e $DEPENDENCY_EXECUTION_MARKER ]] || fail 'dependency guidance executed a privileged package command'
 [[ ! -e $MISSING_DEPENDENCY_HOME/.config/git/config ]] || fail 'missing dependency allowed configuration changes'
 

@@ -178,4 +178,7 @@ print_dependency_guidance() {
     echo -e "  ${WHITE}$label:${NC}"
     echo -e "    ${GRAY}${GIT_SETUP_PACKAGE_MANAGER_COMMAND[$manager]}${NC}"
   done
+
+  echo ""
+  print_info "After installing the missing packages, run git-setup again."
 }
