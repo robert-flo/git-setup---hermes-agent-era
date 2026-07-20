@@ -89,7 +89,7 @@ set -Eeuo pipefail
 # Establece el directorio de trabajo del script e importa variables y funciones globales
 # desde global_fn.sh. Si no se puede cargar el archivo, el script termina con error.
 scrDir="$(dirname "$(realpath "$0")")"
-PROJECT_DIR="$(cd "$scrDir/.." && pwd)"
+PROJECT_DIR="${GIT_SETUP_ROOT:-$(cd "$scrDir/.." && pwd)}"
 TEMPLATE_DIR="$PROJECT_DIR/templates/git"
 # shellcheck disable=SC1091
 if ! source "$PROJECT_DIR/lib/global_fn.sh"; then

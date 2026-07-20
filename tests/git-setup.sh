@@ -3,7 +3,9 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GIT_SETUP="$ROOT_DIR/bin/git-setup"
+# The supported development entry point is the root dispatcher, not an
+# implementation file under bin/.
+GIT_SETUP="$ROOT_DIR/git-setup"
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/git-setup-test.XXXXXX")"
 TEST_BIN="$TEST_ROOT/bin"
 DEFAULT_HOME="$TEST_ROOT/default-home"
@@ -28,7 +30,10 @@ run_setup() {
   local home="$1"
   shift
 
-  HOME="$home" TERM=dumb PATH="$TEST_BIN:$PATH" "$GIT_SETUP" "$@"
+  (
+    cd "$TEST_ROOT"
+    HOME="$home" TERM=dumb PATH="$TEST_BIN:$PATH" "$GIT_SETUP" "$@"
+  )
 }
 
 mkdir -p "$TEST_BIN" "$DEFAULT_HOME" "$CUSTOM_HOME"
