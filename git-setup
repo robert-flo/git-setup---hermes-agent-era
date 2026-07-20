@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+mydir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091 # Resolved from the checked-out project root.
+source "${mydir}/helper/set_variable.sh"
+
+exec "$GIT_SETUP_LEGACY_ENTRYPOINT" "$@"
